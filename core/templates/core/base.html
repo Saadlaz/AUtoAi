@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %} 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AutoAI{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <img src="{% static 'images/AutoAI.png' %}" alt="Logo" width="150" height="150">
+            <ul>
+                <li><a href="{% url 'home' %}">Home</a></li>
+                <li><a href="{% url 'upload_dataset' %}">Data Upload</a></li>
+                <li><a href="{% url 'visualize' %}">Data Visualisation</a></li>
+                <li><a href="{% url 'preprocess' %}">Data Preprocessing</a></li>
+                <li><a href="{% url 'classify' %}">Model Training</a></li>
+                <li><a href="{% url 'predict' %}">Predictions</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+</body>
+</html>

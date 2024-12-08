@@ -129,8 +129,22 @@ def _plot_to_base64(fig):
     buffer.close()
     plt.close(fig)  # Close the figure to save memory
     return image_base64
+
+
 def home(request):
     return render(request, 'core/home.html')
 
+def upload(request):
+    return render(request, 'core/upload.html')
 
+def visualize(request):
+    return render(request, 'core/visualize.html')
 
+def preprocess(request):
+    return render(request, 'core/preprocess.html')
+
+def classify(request):
+    return render(request, 'core/classify.html')
+
+def predict(request):
+    return render(request, 'core/predict.html')
