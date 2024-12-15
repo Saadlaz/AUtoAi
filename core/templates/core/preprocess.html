@@ -1,0 +1,81 @@
+{% extends "core/base.html" %}
+
+{% block title %}Data Preprocessing{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if dataset_info %}
+        <!-- Dataset Information Section -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Current Dataset</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Name:</strong> {{ dataset_info.name }}</li>
+                    <li class="list-group-item"><strong>Rows:</strong> {{ dataset_info.rows }}</li>
+                    <li class="list-group-item"><strong>Columns:</strong> {{ dataset_info.columns }}</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Preprocessing Options Form -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Preprocessing Options</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% url 'submit_preprocess' %}">
+                    {% csrf_token %}
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="fill_missing" name="fill_missing" value="true">
+                        <label class="form-check-label" for="fill_missing">Fill Missing Values</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="scale_data" name="scale_data" value="true">
+                        <label class="form-check-label" for="scale_data">Scale Data</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="remove_outliers" name="remove_outliers" value="true">
+                        <label class="form-check-label" for="remove_outliers">Remove Outliers</label>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Preprocess Dataset</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Processing Info Section -->
+        {% if processing_info %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Processing Summary</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><strong>Original Shape:</strong> {{ processing_info.original_shape }}</li>
+                        {% for action in processing_info.actions %}
+                            <li>{{ action }}</li>
+                        {% endfor %}
+                        <li><strong>Processed Shape:</strong> {{ processing_info.processed_shape }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Processed Data Preview -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Processed Data Preview</h5>
+                </div>
+                <div class="card-body">
+                    {{ processed_data_preview|safe }}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- No Dataset Message -->
+        <div class="alert alert-warning text-center mt-5">
+            <p>No dataset loaded. Please <a href="{% url 'upload_dataset' %}" class="alert-link">upload a dataset</a> first.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -10,6 +10,10 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
+from django.http import HttpResponse
+from sklearn.impute import SimpleImputer
+import numpy as np
 
 
 def upload_dataset(request):
@@ -35,16 +39,32 @@ def upload_dataset(request):
             dataset_info = _get_dataset_info(df)
 
     else:
-        # If a dataset ID exists in the session, pre-load itt
+        # If a dataset ID exists in the session, pre-load it
         dataset_id = request.session.get('dataset_id')
         if dataset_id:
             try:
                 dataset = Dataset.objects.get(id=dataset_id)
                 file_path = dataset.file.path
+
+                # Check if the file exists
+                if not os.path.exists(file_path):
+                    # Clear the session if the file is missing
+                    del request.session['dataset_id']
+                    return render(request, 'core/upload.html', {
+                        'form': DatasetForm(),
+                        'error': "The previously uploaded dataset file is missing. Please upload a new dataset."
+                    })
+
+                # Load the dataset into a DataFrame
                 df = pd.read_csv(file_path)
                 dataset_info = _get_dataset_info(df)
             except Dataset.DoesNotExist:
-                pass
+                # Clear the session if the dataset ID is invalid
+                del request.session['dataset_id']
+                return render(request, 'core/upload.html', {
+                    'form': DatasetForm(),
+                    'error': "The dataset associated with the session does not exist. Please upload a new dataset."
+                })
 
     return render(request, 'core/upload.html', {'form': DatasetForm(), 'dataset_info': dataset_info})
 
@@ -253,3 +273,118 @@ def classify(request):
 
 def predict(request):
     return render(request, 'core/predict.html')
+
+
+#-------------------------------------------------------
+
+
+def preprocess(request):
+    """
+    Render the preprocess.html template and display dataset info if available.
+    """
+    dataset_id = request.session.get('dataset_id')
+    dataset_info = None
+
+    if dataset_id:
+        try:
+            # Retrieve the dataset and load it into a DataFrame
+            dataset = Dataset.objects.get(id=dataset_id)
+            file_path = dataset.file.path
+            df = pd.read_csv(file_path)
+
+            # Extract dataset info for display
+            dataset_info = {
+                'name': dataset.name,
+                'rows': df.shape[0],
+                'columns': df.shape[1],
+            }
+        except Dataset.DoesNotExist:
+            return HttpResponse("The dataset associated with the session does not exist.", status=400)
+        except Exception as e:
+            return HttpResponse(f"Error loading dataset: {str(e)}", status=400)
+
+    return render(request, 'core/preprocess.html', {'dataset_info': dataset_info})
+
+
+def submit_preprocessing(request):
+    """
+    Handle preprocessing logic using the previously uploaded dataset
+    and display the results on the page.
+    """
+    if request.method == 'POST':
+        # Retrieve the dataset ID from the session
+        dataset_id = request.session.get('dataset_id')
+        if not dataset_id:
+            return HttpResponse("No dataset found in session. Please upload a dataset first.", status=400)
+
+        try:
+            # Get the dataset object and load it into a DataFrame
+            dataset = Dataset.objects.get(id=dataset_id)
+            file_path = dataset.file.path
+            df = pd.read_csv(file_path)
+        except Dataset.DoesNotExist:
+            return HttpResponse("The dataset associated with the session does not exist.", status=400)
+        except Exception as e:
+            return HttpResponse(f"Error loading dataset: {str(e)}", status=400)
+
+        # Initialize a dictionary to store preprocessing actions and stats
+        processing_info = {
+            "original_shape": df.shape,
+            "actions": [],
+        }
+
+        # Apply preprocessing steps based on user selection
+        if 'fill_missing' in request.POST:
+            df = fill_missing_values(df)
+            processing_info["actions"].append("Filled missing values")
+
+        if 'scale_data' in request.POST:
+            df = scale_data(df)
+            processing_info["actions"].append("Scaled numeric data")
+
+        if 'remove_outliers' in request.POST:
+            original_rows = df.shape[0]
+            df = remove_outliers(df)
+            removed_rows = original_rows - df.shape[0]
+            processing_info["actions"].append(f"Removed {removed_rows} outliers")
+
+        # Save processed DataFrame to memory for display
+        processed_data_preview = df.head(10).to_html(classes="table table-striped", index=False)
+
+        # Update the processing information
+        processing_info["processed_shape"] = df.shape
+
+        return render(request, 'core/preprocess.html', {
+            "dataset_info": {
+                "name": dataset.name,
+                "rows": processing_info["processed_shape"][0],
+                "columns": processing_info["processed_shape"][1],
+            },
+            "processing_info": processing_info,
+            "processed_data_preview": processed_data_preview,
+        })
+
+    return HttpResponse("Invalid request method.", status=405)
+
+
+
+
+# Preprocessing utility functions
+def fill_missing_values(data):
+    imputer = SimpleImputer(strategy='mean')
+    numeric_data = data.select_dtypes(include=[np.number])
+    data[numeric_data.columns] = imputer.fit_transform(numeric_data)
+    return data
+
+def scale_data(data):
+    scaler = StandardScaler()
+    numeric_data = data.select_dtypes(include=[np.number])
+    data[numeric_data.columns] = scaler.fit_transform(numeric_data)
+    return data
+
+def remove_outliers(data):
+    from scipy.stats import zscore
+    numeric_data = data.select_dtypes(include=[np.number])
+    z_scores = np.abs(zscore(numeric_data))
+    data = data[(z_scores < 3).all(axis=1)]  # Retain rows where Z-score < 3
+    return data
