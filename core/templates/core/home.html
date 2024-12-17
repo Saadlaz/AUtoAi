@@ -1,58 +1,116 @@
-<!-- core/templates/core/home.html -->
 {% extends 'core/base.html' %}
-
 {% block title %}Home{% endblock %}
-
 {% block content %}
-{% load static %}
-<script src="https://cdn.jsdelivr.net/npm/scrollreveal"></script>
-<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<style>
+    body {
+    
+    background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+    margin: 0;
+    font-family: Arial, sans-serif;
+    flex-direction: row; 
+    height: 100vh; 
+}
+    
+    .hero {
+        
+        color: white;
+        text-align: center;
+        padding: 60px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        background-image: url('static/images/auto.png');
+       
+    }
 
+    .hero h1 {
+        
+        font-weight: bold;
+        font-size: 3rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 0;
+    }
 
-<div class="hero section">
+    .hero p {
+        font-size: 1.2rem;
+    }
+
+    .features {
+        
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .feature {
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        transition: transform 0.3s ease;
+    }
+
+    .feature:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature i {
+        font-size: 2.5rem;
+        color: #4a69bd;
+        margin-bottom: 10px;
+    }
+
+    .cta {
+        text-align: center;
+        margin-top: 30px;
+    }
+
+    .cta a {
+        background-color: #4a69bd;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background 0.3s ease;
+    }
+
+    .cta a:hover {
+        background-color: #2e4d9a;
+    }
+</style>
+
+<div class="hero">
     <h1>Welcome to AutoAI</h1>
     <p>Learn about your data and make informed decisions with ease.</p>
 </div>
 
-<div class="features section">
+<div class="features">
     <div class="feature">
-        <i class="bi bi-bar-chart-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-bar-chart-fill"></i>
         <h3>Data Visualization</h3>
         <p>Discover insights and patterns in your data through compelling visuals.</p>
     </div>
     <div class="feature">
-        <i class="bi bi-gear-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-gear-fill"></i>
         <h3>Data Preprocessing</h3>
         <p>Clean, transform, and prepare your datasets for analysis and modeling.</p>
     </div>
     <div class="feature">
-        <i class="bi bi-cpu-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-cpu-fill"></i>
         <h3>Model Training</h3>
         <p>Train AI models tailored to your datasets and objectives.</p>
     </div>
 </div>
 
-<div class="cta section">
-    <h2>Ready to get started?</h2>
-    <a href="{% url 'upload_dataset' %}" class="btn btn-primary mt-3">
-        Upload Your Dataset
-    </a>
+<div class="cta">
+    <h2 class="mb-3">Ready to get started?</h2>
+    <a href="{% url 'upload_dataset' %}">Upload Your Dataset</a>
 </div>
-
-
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const sections = document.querySelectorAll('.section');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, { threshold: 0.1 });
-
-        sections.forEach((section) => observer.observe(section));
-    });
-</script>
 {% endblock %}

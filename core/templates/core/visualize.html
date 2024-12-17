@@ -1,12 +1,22 @@
 {% extends 'core/base.html' %}
 {% block title %}Data Visualization{% endblock %}
 {% block content %}
+<style>
+    .plot-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+    }
+</style>
+
 <div class="container my-5">
     <h1 class="text-center mb-4">Data Visualization</h1>
 
     {% if error %}
         <div class="alert alert-danger text-center">{{ error }}</div>
     {% else %}
+    <!-- Form to select plot type and features -->
     <form method="GET" class="text-center">
         <div class="row justify-content-center align-items-center mb-3">
             <!-- Plot Type Dropdown -->
@@ -51,10 +61,11 @@
             </div>
         </div>
     </form>
-    
-    {% if plot %}
-        <div class="text-center mt-4">
-            <img src="data:image/png;base64,{{ plot }}" class="img-fluid rounded my-3" alt="Generated Plot">
+
+    <!-- Plot Display -->
+    {% if plot_html %}
+        <div class="mt-4">
+            {{ plot_html|safe }}
         </div>
     {% endif %}
     {% endif %}
@@ -66,7 +77,6 @@
         const xLabelContainer = document.getElementById("x_label_container");
         const yLabelContainer = document.getElementById("y_label_container");
 
-        // Hide or show dropdowns based on the plot type
         if (plotType === "Heatmap" || plotType === "Pair Plot") {
             xLabelContainer.style.display = "none";
             yLabelContainer.style.display = "none";
@@ -79,8 +89,6 @@
             yLabelContainer.style.display = "none";
         }
     }
-
-    // Initial call to toggle labels on page load
     toggleLabels();
 </script>
 {% endblock %}

@@ -2,7 +2,7 @@ from django.db import models
 
 # Create your models here.
 class Dataset(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, blank=True, null=True)
     file = models.FileField(upload_to='datasets/')
     processed_file = models.FileField(upload_to='processed/', null=True, blank=True)
     status = models.CharField(
