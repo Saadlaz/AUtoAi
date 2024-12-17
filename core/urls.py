@@ -9,7 +9,6 @@ urlpatterns = [
     path('visualize/', views.visualize_data, name='visualize_data'),
     
     path('preprocess/', views.preprocess, name='preprocess'),
-    #path('preprocess/submit/', views.submit_preprocessing, name='submit_preprocess'),
     
     path('classify/', views.classify, name='classify'),
     

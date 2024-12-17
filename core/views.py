@@ -277,7 +277,6 @@ def upload(request):
     return render(request, 'core/upload.html')
 
 
-
 def preprocess(request):
     return render(request, 'core/preprocess.html')
 
@@ -295,6 +294,7 @@ def preprocess(request):
     df = None
     missing_summary, train_shape, test_shape, sample_data = None, None, None, None
     dataset_id = request.session.get('dataset_id')
+    
     if not dataset_id:
         return render(request, 'core/upload.html', {'error': 'No dataset available for encoding. Please upload a dataset first.'})
 
@@ -305,7 +305,11 @@ def preprocess(request):
     except Exception as e:
         return render(request, 'core/upload.html', {'error': f"Error loading dataset: {str(e)}"})
 
-    # Process the dataset if available
+    # Initialize variables to hold additional information
+    num_duplicates_deleted = 0
+    encoded_columns = []
+    num_outliers_deleted = 0
+    
     if df is not None:
         # Handle Missing Values
         missing_summary = df.isnull().sum().to_dict()
@@ -317,6 +321,7 @@ def preprocess(request):
                     df[column].fillna(df[column].median(), inplace=True)
 
         # Remove Duplicates
+        num_duplicates_deleted = df.duplicated().sum()
         df.drop_duplicates(inplace=True)
 
         # Strip Whitespaces
@@ -324,14 +329,15 @@ def preprocess(request):
 
         # Encoding Categorical Features
         for col in df.select_dtypes(include=['object']).columns:
-            # High cardinality -> Label Encoding
             le = LabelEncoder()
-            df[col] = le.fit_transform(df[col])         
+            df[col] = le.fit_transform(df[col])
+            encoded_columns.append(col)
 
         # Outlier Detection
         for col in df.select_dtypes(include=['float64', 'int64']).columns:
             upper_limit = df[col].quantile(0.95)
             lower_limit = df[col].quantile(0.05)
+            num_outliers_deleted += ((df[col] > upper_limit) | (df[col] < lower_limit)).sum()
             df[col] = df[col].clip(lower=lower_limit, upper=upper_limit)
 
         # Scaling & Normalization
@@ -352,26 +358,9 @@ def preprocess(request):
         'train_shape': train_shape,
         'test_shape': test_shape,
         'sample_data': sample_data,
+        'num_duplicates_deleted': num_duplicates_deleted,
+        'encoded_columns': encoded_columns,
+        'num_outliers_deleted': num_outliers_deleted,
     }
+    
     return render(request, 'core/preprocess.html', context)
-
-
-# Preprocessing utility functions
-def fill_missing_values(data):
-    imputer = SimpleImputer(strategy='mean')
-    numeric_data = data.select_dtypes(include=[np.number])
-    data[numeric_data.columns] = imputer.fit_transform(numeric_data)
-    return data
-
-def scale_data(data):
-    scaler = StandardScaler()
-    numeric_data = data.select_dtypes(include=[np.number])
-    data[numeric_data.columns] = scaler.fit_transform(numeric_data)
-    return data
-
-def remove_outliers(data):
-    from scipy.stats import zscore
-    numeric_data = data.select_dtypes(include=[np.number])
-    z_scores = np.abs(zscore(numeric_data))
-    data = data[(z_scores < 3).all(axis=1)]  # Retain rows where Z-score < 3
-    return data

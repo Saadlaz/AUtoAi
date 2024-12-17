@@ -5,30 +5,99 @@
 <div class="container mt-4">
     <h1 class="text-center mb-4">Data Preprocessing Summary</h1>
 
-    <!-- Missing Values Summary -->
+    <div class="row mb-4">
+        <!-- Missing Values Summary -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Missing Values Summary</h4>
+                </div>
+                <div class="card-body">
+                    {% if missing_summary %}
+                        <ul class="list-group missing-summary">
+                            {% for column, count in missing_summary.items %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ column }}
+                                    <span class="badge bg-secondary">{{ count }} missing</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No missing values detected in the dataset.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Encoded Columns -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Encoded Columns</h4>
+                </div>
+                <div class="card-body">
+                    {% if encoded_columns %}
+                        <ul class="list-group encoded-columns">
+                            {% for col in encoded_columns %}
+                                <li class="list-group-item">{{ col }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">No categorical columns encoded.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+
+        <!-- Duplicates Deleted -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Duplicates Removed</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Number of duplicates deleted:</strong> {{ num_duplicates_deleted }}</p>
+                </div>
+            </div>
+        </div>
+        <!-- Outliers Removed -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4>Outliers Removed</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Number of outliers removed:</strong> {{ num_outliers_deleted }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Sample -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
-            <h4>Missing Values Summary</h4>
+            <h4>Sample Data (Top 10 Rows)</h4>
         </div>
         <div class="card-body">
-            {% if missing_summary %}
-                <ul class="list-group">
-                    {% for column, count in missing_summary.items %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ column }}
-                            <span class="badge bg-secondary">{{ count }} missing</span>
-                        </li>
-                    {% endfor %}
-                </ul>
+            {% if sample_data %}
+                <div class="table-responsive">
+                    <!-- Add custom table styles here -->
+                    <table class="table table-bordered">
+                        {{ sample_data|safe }}
+                    </table>
+                </div>
             {% else %}
-                <p class="text-muted">No missing values detected in the dataset.</p>
+                <p class="text-muted">No data available to display.</p>
             {% endif %}
         </div>
     </div>
 
     <!-- Train/Test Shape -->
     <div class="card mb-4">
-        <div class="card-header bg-success text-white">
+        <div class="card-header bg-primary text-white">
             <h4>Dataset Shapes</h4>
         </div>
         <div class="card-body">
@@ -36,21 +105,60 @@
             <p><strong>Test Dataset Shape:</strong> {{ test_shape }}</p>
         </div>
     </div>
-
-    <!-- Data Sample -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h4>Sample Data (Top 10 Rows)</h4>
-        </div>
-        <div class="card-body">
-            {% if sample_data %}
-                <div class="table-responsive">
-                    {{ sample_data|safe }}
-                </div>
-            {% else %}
-                <p class="text-muted">No data available to display.</p>
-            {% endif %}
-        </div>
-    </div>
 </div>
+
+<!-- Custom CSS for table and lists -->
+<style>
+    body {
+    
+        background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+        margin: 0;
+        font-family: Arial, sans-serif;
+        flex-direction: row; 
+        height: 100vh; 
+    }
+        
+    table.table-bordered {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table.table-bordered th,
+    table.table-bordered td {
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        text-align: left;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f8fafc;
+    }
+
+    tr:hover {
+        background-color: #e6f0ff;
+    }
+
+    /* Custom styles for the lists (Missing Values & Encoded Columns) */
+    ul.list-group {
+        padding-left: 0;
+    }
+
+    ul.missing-summary li:nth-child(even),
+    ul.encoded-columns li:nth-child(even) {
+        background-color: #f8fafc;
+    }
+
+    ul.missing-summary li:hover,
+    ul.encoded-columns li:hover {
+        background-color: #e6f0ff;
+    }
+
+    /* Styling the list items */
+    ul.missing-summary li,
+    ul.encoded-columns li {
+        padding: 8px;
+        border-bottom: 1px solid #dee2e6;
+    }
+</style>
+
 {% endblock %}
