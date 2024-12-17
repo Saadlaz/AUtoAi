@@ -10,7 +10,7 @@ from django.shortcuts import render
 from .forms import DatasetForm
 from .models import Dataset 
 from io import StringIO
-
+from plotly import px 
 from io import BytesIO
 from sklearn.preprocessing import LabelEncoder , MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
