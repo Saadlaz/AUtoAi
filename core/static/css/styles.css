@@ -6,6 +6,7 @@ body {
     display: flex; /* Keeps sidebar and content side by side */
     flex-direction: row; /* Ensure horizontal alignment for sidebar and main content */
     height: 100vh; /* Make the sidebar stretch the full height */
+    background-color:rgb(230, 102, 174)
 }
 
 .container {
@@ -58,4 +59,83 @@ body {
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+
+
+.section {
+    opacity: 0; /* Initially hidden */
+    transform: translateY(20px); /* Slightly off-screen */
+    transition: all 0.5s ease-in-out;
+}
+
+.section.visible {
+    opacity: 1; /* Fully visible */
+    transform: translateY(0); /* In position */
+}
+
+.hero {
+    background-color: #f4f4f9;
+    padding: 50px 20px;
+    text-align: center;
+    background-image: url('../images/auto.png'); 
+    background-size: cover; 
+    background-position: center; 
+    background-repeat: no-repeat; 
+    color: white; 
+    padding: 50px 20px;
+    text-align: center;
+    box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, 0.5);
+}
+ .hero h1 {
+    position: relative; /* Keeps it above the background */
+    background: linear-gradient(90deg, #4caf50, #2196f3); /* Gradient from green to blue */
+    -webkit-background-clip: text; /* Ensures only the text is colored */
+    -webkit-text-fill-color: transparent; /* Makes the gradient visible */
+    font-size: 3rem; /* Adjust font size as needed */
+    font-weight: bold; /* Makes the text bold */
+}
+
+.hero p {
+    color: #f4f4f9; /* Light gray for the subtitle */
+    font-size: 1.2rem; /* Adjust subtitle size */
+}
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.feature {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cta {
+    background-color: #2c3e50;
+    color: white;
+    padding: 40px 20px;
+    text-align: center;
+    border-radius: 8px;
+    margin: 20px auto;
+    max-width: 600px;
+}
+
+.cta a {
+    color: white; /* Change text color */
+    text-decoration: none; /* Remove underline */
+    font-weight: bold; /* Make it bold */
+    background-color: #007bff; /* Add a blue background */
+    padding: 10px 20px; /* Add padding around the link */
+    border-radius: 5px; /* Make corners rounded */
+    display: inline-block; /* Ensure it behaves like a button */
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.cta a:hover {
+    background-color: #0056b3; /* Darker blue on hover */
 }

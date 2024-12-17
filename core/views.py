@@ -16,12 +16,9 @@ from sklearn.preprocessing import LabelEncoder , MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
 from django.http import HttpResponse
 from sklearn.impute import SimpleImputer
-<<<<<<< HEAD
 import numpy as np
 import plotly.express as px
 
-=======
->>>>>>> c6aad604a00b68967c63e69ea224cf700e6f7b75
 
 
 
