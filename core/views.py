@@ -1,19 +1,22 @@
 # core/views.py
+import numpy as np
 import pandas as pd
+import base64
+import os
+import io
+import seaborn as sns
+import matplotlib.pyplot as plt
 from django.shortcuts import render
 from .forms import DatasetForm
 from .models import Dataset 
 from io import StringIO
-import os
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 from io import BytesIO
-import base64
-from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder , MinMaxScaler, StandardScaler
+from sklearn.model_selection import train_test_split
 from django.http import HttpResponse
 from sklearn.impute import SimpleImputer
-import numpy as np
+
 
 
 def upload_dataset(request):
@@ -279,94 +282,68 @@ def predict(request):
 
 
 def preprocess(request):
-    """
-    Render the preprocess.html template and display dataset info if available.
-    """
+    df = None
+    missing_summary, train_shape, test_shape, sample_data = None, None, None, None
     dataset_id = request.session.get('dataset_id')
-    dataset_info = None
+    if not dataset_id:
+        return render(request, 'core/upload.html', {'error': 'No dataset available for encoding. Please upload a dataset first.'})
 
-    if dataset_id:
-        try:
-            # Retrieve the dataset and load it into a DataFrame
-            dataset = Dataset.objects.get(id=dataset_id)
-            file_path = dataset.file.path
-            df = pd.read_csv(file_path)
+    try:
+        dataset = Dataset.objects.get(id=dataset_id)
+        file_path = dataset.file.path
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        return render(request, 'core/upload.html', {'error': f"Error loading dataset: {str(e)}"})
 
-            # Extract dataset info for display
-            dataset_info = {
-                'name': dataset.name,
-                'rows': df.shape[0],
-                'columns': df.shape[1],
-            }
-        except Dataset.DoesNotExist:
-            return HttpResponse("The dataset associated with the session does not exist.", status=400)
-        except Exception as e:
-            return HttpResponse(f"Error loading dataset: {str(e)}", status=400)
+    # Process the dataset if available
+    if df is not None:
+        # Handle Missing Values
+        missing_summary = df.isnull().sum().to_dict()
+        for column in df.columns:
+            if df[column].isnull().sum() > 0:
+                if df[column].dtype == 'object':  # Categorical columns
+                    df[column].fillna("Unknown", inplace=True)
+                else:  # Numerical columns
+                    df[column].fillna(df[column].median(), inplace=True)
 
-    return render(request, 'core/preprocess.html', {'dataset_info': dataset_info})
+        # Remove Duplicates
+        df.drop_duplicates(inplace=True)
 
+        # Strip Whitespaces
+        df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
 
-def submit_preprocessing(request):
-    """
-    Handle preprocessing logic using the previously uploaded dataset
-    and display the results on the page.
-    """
-    if request.method == 'POST':
-        # Retrieve the dataset ID from the session
-        dataset_id = request.session.get('dataset_id')
-        if not dataset_id:
-            return HttpResponse("No dataset found in session. Please upload a dataset first.", status=400)
+        # Encoding Categorical Features
+        for col in df.select_dtypes(include=['object']).columns:
+            # High cardinality -> Label Encoding
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col])         
 
-        try:
-            # Get the dataset object and load it into a DataFrame
-            dataset = Dataset.objects.get(id=dataset_id)
-            file_path = dataset.file.path
-            df = pd.read_csv(file_path)
-        except Dataset.DoesNotExist:
-            return HttpResponse("The dataset associated with the session does not exist.", status=400)
-        except Exception as e:
-            return HttpResponse(f"Error loading dataset: {str(e)}", status=400)
+        # Outlier Detection
+        for col in df.select_dtypes(include=['float64', 'int64']).columns:
+            upper_limit = df[col].quantile(0.95)
+            lower_limit = df[col].quantile(0.05)
+            df[col] = df[col].clip(lower=lower_limit, upper=upper_limit)
 
-        # Initialize a dictionary to store preprocessing actions and stats
-        processing_info = {
-            "original_shape": df.shape,
-            "actions": [],
-        }
+        # Scaling & Normalization
+        scaler = MinMaxScaler()
+        numerical_cols = df.select_dtypes(include=['float64', 'int64']).columns
+        df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
 
-        # Apply preprocessing steps based on user selection
-        if 'fill_missing' in request.POST:
-            df = fill_missing_values(df)
-            processing_info["actions"].append("Filled missing values")
+        # Train-Test Split
+        train, test = train_test_split(df, test_size=0.2, random_state=42)
+        train_shape, test_shape = train.shape, test.shape
 
-        if 'scale_data' in request.POST:
-            df = scale_data(df)
-            processing_info["actions"].append("Scaled numeric data")
+        # Prepare Data Preview
+        sample_data = df.head(10).to_html(classes="table table-bordered")
 
-        if 'remove_outliers' in request.POST:
-            original_rows = df.shape[0]
-            df = remove_outliers(df)
-            removed_rows = original_rows - df.shape[0]
-            processing_info["actions"].append(f"Removed {removed_rows} outliers")
-
-        # Save processed DataFrame to memory for display
-        processed_data_preview = df.head(10).to_html(classes="table table-striped", index=False)
-
-        # Update the processing information
-        processing_info["processed_shape"] = df.shape
-
-        return render(request, 'core/preprocess.html', {
-            "dataset_info": {
-                "name": dataset.name,
-                "rows": processing_info["processed_shape"][0],
-                "columns": processing_info["processed_shape"][1],
-            },
-            "processing_info": processing_info,
-            "processed_data_preview": processed_data_preview,
-        })
-
-    return HttpResponse("Invalid request method.", status=405)
-
-
+    # Context for rendering
+    context = {
+        'missing_summary': missing_summary,
+        'train_shape': train_shape,
+        'test_shape': test_shape,
+        'sample_data': sample_data,
+    }
+    return render(request, 'core/preprocess.html', context)
 
 
 # Preprocessing utility functions
