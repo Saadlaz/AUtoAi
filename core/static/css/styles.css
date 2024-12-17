@@ -1,4 +1,6 @@
 body {
+    
+    background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
     margin: 0;
     font-family: Arial, sans-serif;
     display: flex; /* Keeps sidebar and content side by side */

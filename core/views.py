@@ -14,59 +14,51 @@ from sklearn.preprocessing import StandardScaler
 from django.http import HttpResponse
 from sklearn.impute import SimpleImputer
 import numpy as np
+import plotly.express as px
+
+
 
 
 def upload_dataset(request):
-    dataset_info = None
+    dataset_info = {}  # Dictionary to hold dataset details
 
     if request.method == 'POST':
         form = DatasetForm(request.POST, request.FILES)
         if form.is_valid():
             uploaded_file = form.cleaned_data['file']
+
+            # Save uploaded file
             dataset = Dataset.objects.create(
-                name=uploaded_file.name,
+                name=f"dataset_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
                 file=uploaded_file
             )
 
-            # Store the dataset ID in the session
+            # Save dataset ID in session
             request.session['dataset_id'] = dataset.id
 
-            # Load the dataset into a DataFrame
+            # Load dataset and get information
             file_path = dataset.file.path
             df = pd.read_csv(file_path)
 
-            # Extract dataset info for display
+            # Use the helper function to get dataset information
             dataset_info = _get_dataset_info(df)
 
     else:
-        # If a dataset ID exists in the session, pre-load it
+        # Handle dataset reload if ID exists in session
+        form = DatasetForm()
         dataset_id = request.session.get('dataset_id')
         if dataset_id:
             try:
                 dataset = Dataset.objects.get(id=dataset_id)
                 file_path = dataset.file.path
-
-                # Check if the file exists
-                if not os.path.exists(file_path):
-                    # Clear the session if the file is missing
-                    del request.session['dataset_id']
-                    return render(request, 'core/upload.html', {
-                        'form': DatasetForm(),
-                        'error': "The previously uploaded dataset file is missing. Please upload a new dataset."
-                    })
-
-                # Load the dataset into a DataFrame
-                df = pd.read_csv(file_path)
-                dataset_info = _get_dataset_info(df)
+                if os.path.exists(file_path):
+                    df = pd.read_csv(file_path)
+                    dataset_info = _get_dataset_info(df)
             except Dataset.DoesNotExist:
-                # Clear the session if the dataset ID is invalid
+                # Clear session if dataset doesn't exist
                 del request.session['dataset_id']
-                return render(request, 'core/upload.html', {
-                    'form': DatasetForm(),
-                    'error': "The dataset associated with the session does not exist. Please upload a new dataset."
-                })
 
-    return render(request, 'core/upload.html', {'form': DatasetForm(), 'dataset_info': dataset_info})
+    return render(request, 'core/upload.html', {'form': form, 'dataset_info': dataset_info})
 
 
 def _get_dataset_info(df):
@@ -76,6 +68,7 @@ def _get_dataset_info(df):
     info_output = buffer.getvalue()
     buffer.close()
 
+    # Process Pandas DataFrame info output
     column_info = []
     for line in info_output.splitlines()[5:]:
         if "dtypes:" in line or "memory usage:" in line:
@@ -90,12 +83,11 @@ def _get_dataset_info(df):
             })
 
     return {
-        'preview': df.head(15).to_html(classes='table table-striped table-hover', index=False),
+        'preview': df.head(10).to_html(classes='table table-striped table-hover', index=False),
         'info': column_info,
         'describe': df.describe().reset_index().to_html(classes='table table-striped table-hover', index=False),
         'shape': df.shape,
     }
-
 
 
 def encode_data(request):
@@ -138,123 +130,143 @@ def encode_data(request):
     return render(request, 'core/upload.html', {'message': 'Dataset successfully encoded and saved.'})
 
 
-def _plot_to_base64(fig):
-    """Convert Matplotlib figure to a Base64 image."""
-    buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
-    base64_image = base64.b64encode(buf.read()).decode('utf-8')
-    buf.close()
-    return base64_image
 
 def visualize_data(request):
-
-    # Retrieve dataset ID from session
+    # Load dataset
     dataset_id = request.session.get('dataset_id')
     if not dataset_id:
-        return render(request, 'core/visualize.html', {'error': 'No dataset available for visualization. Please upload a dataset first.'})
+        return render(request, 'core/visualize.html', {'error': 'No dataset available. Please upload one.'})
 
-    # Load dataset
     try:
         dataset = Dataset.objects.get(id=dataset_id)
-        df = pd.read_csv(dataset.file.path)
+        file_path = dataset.file.path
+        df = pd.read_csv(file_path)
     except Exception as e:
         return render(request, 'core/visualize.html', {'error': f"Error loading dataset: {str(e)}"})
 
-    # Encode categorical features
-    categorical_columns = df.select_dtypes(include=['object']).columns
-    for col in categorical_columns:
-        label_encoder = LabelEncoder()
-        df[col] = label_encoder.fit_transform(df[col])
+    # Extract column names
+    columns = df.columns.tolist()
+    numerical_columns = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
 
-    # Get user input for plot type and labels
-    plot_type = request.GET.get('plot_type', 'Heatmap')  # Default to Heatmap
-    x_label = request.GET.get('x_label')
-    y_label = request.GET.get('y_label')
+    # Get user inputs
+    plot_type = request.GET.get('plot_type', 'Heatmap')
+    x_label = request.GET.get('x_label', None)
+    y_label = request.GET.get('y_label', None)
 
-    plot = None
+    plot_html = None
 
     try:
-        if plot_type == 'Violin Plot':
-            x_feature = request.GET.get('x_feature')
-            y_feature = request.GET.get('y_feature')
+        # If Heatmap is selected, encode categorical data
+        if plot_type == 'Heatmap':
+            if categorical_columns:
+                label_encoder = LabelEncoder()
+                for column in categorical_columns:
+                    df[column] = label_encoder.fit_transform(df[column])
 
-            if x_feature and y_feature:
-                if x_feature in df.columns and y_feature in df.columns:
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    sns.violinplot(x=df[x_feature], y=df[y_feature], palette="muted", ax=ax)
-                    ax.set_title(f"Violin Plot of {y_feature} by {x_feature}", fontsize=14)
-                    ax.set_xlabel(x_feature)
-                    ax.set_ylabel(y_feature)
-                    plot = _plot_to_base64(fig)
-                else:
-                    return render(request, 'core/visualize.html', {
-                        'error': f"Selected features {x_feature} or {y_feature} not found in dataset."
-                    })
-            else:
-                return render(request, 'core/visualize.html', {
-                    'error': "Please select both X and Y features for the violin plot."
-                })
-
-        elif plot_type == 'Heatmap':
-            
-            excluded_columns = ['Id']  # Add other columns to exclude if necessary
-            filtered_df = df.drop(columns=excluded_columns, errors='ignore')
-            
-            # Generate the heatmap
-            fig, ax = plt.subplots(figsize=(10, 8))
-            sns.heatmap(
-                filtered_df.corr(),
-                annot=True,          
-                fmt=".2f",           
-                cmap='coolwarm',     
-                cbar=True,           
-                linewidths=0.5,      
-                ax=ax
+            # Generate the Heatmap with a custom color scale and size
+            corr = df.corr()
+            fig = px.imshow(
+                corr, 
+                text_auto=True, 
+                title="Correlation Heatmap (Encoded Data)", 
+                width=1200,  # Width
+                height=900,  # Height
+                color_continuous_scale='Viridis'  # Use a predefined color scale
             )
-            ax.set_title("Correlation Heatmap (With Correlation Values)", fontsize=14)
-            plot = _plot_to_base64(fig)
-
+            plot_html = fig.to_html(full_html=False)
 
 
         elif plot_type == 'Histogram' and x_label:
-            # Histogram for selected feature
-            fig, ax = plt.subplots(figsize=(8, 4))
-            sns.histplot(df[x_label], kde=True, ax=ax)
-            ax.set_title(f"Histogram of {x_label}", fontsize=14)
-            plot = _plot_to_base64(fig)
+            fig = px.histogram(df, x=x_label, title=f"Histogram of {x_label}")
+            plot_html = fig.to_html(full_html=False)
 
         elif plot_type == 'Scatter' and x_label and y_label:
-            # Scatter plot for selected X and Y labels
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.scatterplot(x=df[x_label], y=df[y_label], ax=ax)
-            ax.set_title(f"Scatter Plot: {x_label} vs {y_label}", fontsize=14)
-            plot = _plot_to_base64(fig)
+            fig = px.scatter(df, x=x_label, y=y_label, title=f"Scatter Plot: {x_label} vs {y_label}")
+            plot_html = fig.to_html(full_html=False)
 
         elif plot_type == 'Pair Plot':
-            # Pair plot of all features
-            fig = sns.pairplot(df)
-            plot = _plot_to_base64(fig.fig)
+            fig = px.scatter_matrix(df, dimensions=numerical_columns, title="Pair Plot of Numerical Features")
+            plot_html = fig.to_html(full_html=False)
 
         elif plot_type == 'Pie' and x_label:
-            # Pie chart for selected feature
-            fig, ax = plt.subplots(figsize=(8, 6))
-            df[x_label].value_counts().plot.pie(autopct='%1.1f%%', ax=ax, startangle=90, cmap='viridis')
-            ax.set_ylabel('')
-            ax.set_title(f"Pie Chart for {x_label}", fontsize=14)
-            plot = _plot_to_base64(fig)
-      
+            fig = px.pie(df, names=x_label, title=f"Pie Chart of {x_label}")
+            plot_html = fig.to_html(full_html=False)
+
+        elif plot_type == 'Violin Plot' and x_label and y_label:
+            fig = px.violin(df, x=x_label, y=y_label, box=True, title=f"Violin Plot of {y_label} by {x_label}")
+            plot_html = fig.to_html(full_html=False)
+
     except Exception as e:
         return render(request, 'core/visualize.html', {'error': f"Error generating plot: {str(e)}"})
 
-    # Pass plot and available columns to the template
     return render(request, 'core/visualize.html', {
-        'plot': plot,
+        'plot_html': plot_html,
+        'columns': columns,
         'plot_type': plot_type,
-        'columns': df.columns.tolist(),
         'x_label': x_label,
         'y_label': y_label,
     })
+
+
+
+
+
+#-------------------------------------------------------
+
+
+
+from django.shortcuts import render, redirect
+from django.conf import settings
+from .forms import DynamicDatasetForm
+from .models import Dataset
+import pandas as pd
+import numpy as np
+import os
+from django.utils import timezone
+
+def create_dynamic_dataset(request):
+    if request.method == 'POST':
+        form = DynamicDatasetForm(request.POST)
+        if form.is_valid():
+            column_names = [name.strip() for name in form.cleaned_data['column_names'].split(',')]
+            column_types = [typ.strip().lower() for typ in form.cleaned_data['column_types'].split(',')]
+            num_rows = form.cleaned_data['num_rows']
+
+            # Generate Data Dynamically
+            data = {}
+            for col_name, col_type in zip(column_names, column_types):
+                if col_type == 'int':
+                    data[col_name] = np.random.randint(0, 100, num_rows)
+                elif col_type == 'float':
+                    data[col_name] = np.random.uniform(0, 100, num_rows)
+                elif col_type == 'str':
+                    data[col_name] = [f"{col_name}_{i}" for i in range(num_rows)]
+                else:
+                    data[col_name] = ['N/A'] * num_rows  # Default to N/A for unknown types
+            
+            # Convert to DataFrame
+            df = pd.DataFrame(data)
+
+            # Save CSV File
+            file_name = f"dynamic_dataset_{timezone.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            file_path = os.path.join(settings.MEDIA_ROOT, file_name)
+            df.to_csv(file_path, index=False)
+
+            # Save to Database
+            Dataset.objects.create(
+                name=file_name,
+                file=file_name
+            )
+
+            # Redirect to upload page
+            return redirect('upload_dataset')
+    else:
+        form = DynamicDatasetForm()
+
+    return render(request, 'core/create_dynamic_dataset.html', {'form': form})
+
+
 
 def home(request):
     return render(request, 'core/home.html')
@@ -262,8 +274,7 @@ def home(request):
 def upload(request):
     return render(request, 'core/upload.html')
 
-def visualize(request):
-    return render(request, 'core/visualize.html')
+
 
 def preprocess(request):
     return render(request, 'core/preprocess.html')

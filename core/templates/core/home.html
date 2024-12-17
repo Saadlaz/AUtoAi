@@ -1,134 +1,116 @@
-<!-- core/templates/core/home.html -->
 {% extends 'core/base.html' %}
-
 {% block title %}Home{% endblock %}
-
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/scrollreveal"></script>
 <style>
-    .section {
-        opacity: 0; /* Initially hidden */
-        transform: translateY(20px); /* Slightly off-screen */
-        transition: all 0.5s ease-in-out;
-    }
-
-    .section.visible {
-        opacity: 1; /* Fully visible */
-        transform: translateY(0); /* In position */
-    }
-
+    body {
+    
+    background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+    margin: 0;
+    font-family: Arial, sans-serif;
+    flex-direction: row; 
+    height: 100vh; 
+}
+    
     .hero {
-        background-color: #f4f4f9;
-        padding: 50px 20px;
+        
+        color: white;
         text-align: center;
-        background-image: url('static/images/auto.png'); 
-        background-size: cover; 
-        background-position: center; 
-        background-repeat: no-repeat; 
-        color: white; 
-        padding: 50px 20px;
-        text-align: center;
-        box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, 0.5);
+        padding: 60px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        background-image: url('static/images/auto.png');
+       
     }
-     .hero h1 {
-        position: relative; /* Keeps it above the background */
-        background: linear-gradient(90deg, #4caf50, #2196f3); /* Gradient from green to blue */
-        -webkit-background-clip: text; /* Ensures only the text is colored */
-        -webkit-text-fill-color: transparent; /* Makes the gradient visible */
-        font-size: 3rem; /* Adjust font size as needed */
-        font-weight: bold; /* Makes the text bold */
+
+    .hero h1 {
+        
+        font-weight: bold;
+        font-size: 3rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 0;
     }
 
     .hero p {
-        color: #f4f4f9; /* Light gray for the subtitle */
-        font-size: 1.2rem; /* Adjust subtitle size */
+        font-size: 1.2rem;
     }
+
     .features {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 20px;
-        padding: 20px;
     }
 
     .feature {
-        background-color: #fff;
+        background-color: white;
         border: 1px solid #ddd;
+        border-radius: 12px;
         padding: 20px;
-        border-radius: 8px;
         text-align: center;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        transition: transform 0.3s ease;
+    }
+
+    .feature:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .feature i {
+        font-size: 2.5rem;
+        color: #4a69bd;
+        margin-bottom: 10px;
     }
 
     .cta {
-        background-color: #2c3e50;
-        color: white;
-        padding: 40px 20px;
         text-align: center;
-        border-radius: 8px;
-        margin: 20px auto;
-        max-width: 600px;
+        margin-top: 30px;
     }
 
     .cta a {
-        color: white; /* Change text color */
-        text-decoration: none; /* Remove underline */
-        font-weight: bold; /* Make it bold */
-        background-color: #007bff; /* Add a blue background */
-        padding: 10px 20px; /* Add padding around the link */
-        border-radius: 5px; /* Make corners rounded */
-        display: inline-block; /* Ensure it behaves like a button */
-        transition: background-color 0.3s ease; /* Smooth hover effect */
+        background-color: #4a69bd;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: background 0.3s ease;
     }
 
     .cta a:hover {
-        background-color: #0056b3; /* Darker blue on hover */
+        background-color: #2e4d9a;
     }
 </style>
 
-<div class="hero section">
+<div class="hero">
     <h1>Welcome to AutoAI</h1>
     <p>Learn about your data and make informed decisions with ease.</p>
 </div>
 
-<div class="features section">
+<div class="features">
     <div class="feature">
-        <i class="bi bi-bar-chart-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-bar-chart-fill"></i>
         <h3>Data Visualization</h3>
         <p>Discover insights and patterns in your data through compelling visuals.</p>
     </div>
     <div class="feature">
-        <i class="bi bi-gear-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-gear-fill"></i>
         <h3>Data Preprocessing</h3>
         <p>Clean, transform, and prepare your datasets for analysis and modeling.</p>
     </div>
     <div class="feature">
-        <i class="bi bi-cpu-fill" style="font-size: 3rem; color: #2c3e50;"></i>
+        <i class="bi bi-cpu-fill"></i>
         <h3>Model Training</h3>
         <p>Train AI models tailored to your datasets and objectives.</p>
     </div>
 </div>
 
-<div class="cta section">
-    <h2>Ready to get started?</h2>
-    <a href="{% url 'upload_dataset' %}" class="btn btn-primary mt-3">
-        Upload Your Dataset
-    </a>
+<div class="cta">
+    <h2 class="mb-3">Ready to get started?</h2>
+    <a href="{% url 'upload_dataset' %}">Upload Your Dataset</a>
 </div>
-
-
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const sections = document.querySelectorAll('.section');
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, { threshold: 0.1 });
-
-        sections.forEach((section) => observer.observe(section));
-    });
-</script>
 {% endblock %}
