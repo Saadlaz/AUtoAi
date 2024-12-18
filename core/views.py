@@ -386,28 +386,29 @@ def classify(request):
 
     # Load preprocessed data file from session
     preprocessed_file_path = request.session.get('preprocessed_file')
-    if not preprocessed_file_path or not os.path.exists(preprocessed_file_path):
-        return render(request, 'core/preprocess.html', {'error': 'No preprocessed data file available. Please preprocess the data first.'})
+    if not preprocessed_file_path:
+        return render(request, 'core/preprocess.html', {'error': 'No preprocessed data available.'})
 
-    # Load the saved preprocessed dataset
     df = pd.read_csv(preprocessed_file_path)
 
     # Assume the last column is the target
     X = df.iloc[:, :-1]  # Features
     y = df.iloc[:, -1]   # Target
 
-    # Train/Test Split
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Check for form submission
+    # Handle form submission
     if request.method == 'POST':
         model_name = request.POST.get('model')
+
+        # Model selection
         if model_name == 'Naive Bayes':
             model = GaussianNB()
         elif model_name == 'SVM':
             model = SVC()
         elif model_name == 'Random Forest':
-            model = RandomForestClassifier()
+            model = RandomForestClassifier()  # Fixed
         elif model_name == 'KNN':
             model = KNeighborsClassifier()
         elif model_name == 'K-Means':
@@ -415,14 +416,19 @@ def classify(request):
         elif model_name == 'ANN':
             model = MLPClassifier(max_iter=500)
         else:
-            model = None
+            return render(request, 'core/classify.html', {'error': 'Invalid model selection.'})
 
-        if model:
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
+        # Train the model and generate predictions
+        model.fit(X_train, y_train)  # Ensure fitting happens here
+        y_pred = model.predict(X_test)
+
+        # Generate classification report
+        try:
             result = classification_report(y_test, y_pred, output_dict=True)
+        except Exception as e:
+            return render(request, 'core/classify.html', {'error': f"Error during evaluation: {str(e)}"})
 
-    # Render results
+    # Render the template
     context = {
         'result': result,
         'model_name': model_name,
