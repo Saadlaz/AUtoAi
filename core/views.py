@@ -6,7 +6,9 @@ import os
 import io
 import seaborn as sns
 import matplotlib.pyplot as plt
-from django.shortcuts import render
+import plotly.express as px
+from datetime import datetime
+from django.shortcuts import render, redirect
 from .forms import DatasetForm
 from .models import Dataset 
 from io import StringIO
@@ -15,8 +17,16 @@ from sklearn.preprocessing import LabelEncoder , MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split
 from django.http import HttpResponse
 from sklearn.impute import SimpleImputer
-import numpy as np
-import plotly.express as px
+from sklearn.metrics import classification_report
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.cluster import KMeans
+from sklearn.neural_network import MLPClassifier
+from django.conf import settings
+from .forms import DynamicDatasetForm
+from django.utils import timezone
 
 
 
@@ -218,14 +228,7 @@ def visualize_data(request):
 
 
 
-from django.shortcuts import render, redirect
-from django.conf import settings
-from .forms import DynamicDatasetForm
-from .models import Dataset
-import pandas as pd
-import numpy as np
-import os
-from django.utils import timezone
+
 
 def create_dynamic_dataset(request):
     if request.method == 'POST':
@@ -287,7 +290,7 @@ def predict(request):
     return render(request, 'core/predict.html')
 
 
-#-------------------------------------------------------
+#---------------------- Preprocessing ---------------------------------
 
 
 def preprocess(request):
@@ -296,7 +299,7 @@ def preprocess(request):
     dataset_id = request.session.get('dataset_id')
     
     if not dataset_id:
-        return render(request, 'core/upload.html', {'error': 'No dataset available for encoding. Please upload a dataset first.'})
+        return render(request, 'core/upload.html', {'error': 'No dataset available for preprocessing. Please upload a dataset first.'})
 
     try:
         dataset = Dataset.objects.get(id=dataset_id)
@@ -305,7 +308,7 @@ def preprocess(request):
     except Exception as e:
         return render(request, 'core/upload.html', {'error': f"Error loading dataset: {str(e)}"})
 
-    # Initialize variables to hold additional information
+    # Initialize variables
     num_duplicates_deleted = 0
     encoded_columns = []
     num_outliers_deleted = 0
@@ -345,7 +348,18 @@ def preprocess(request):
         numerical_cols = df.select_dtypes(include=['float64', 'int64']).columns
         df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
 
-        # Train-Test Split
+        # Save preprocessed data as a CSV file in the 'datasets' folder
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        preprocessed_file_name = f'preprocessed_{timestamp}.csv'
+        datasets_folder = os.path.join(settings.BASE_DIR, 'datasets')
+        os.makedirs(datasets_folder, exist_ok=True)
+        preprocessed_file_path = os.path.join(datasets_folder, preprocessed_file_name)
+        df.to_csv(preprocessed_file_path, index=False)
+
+        # Store file path in session
+        request.session['preprocessed_file'] = preprocessed_file_path
+
+        # Train-Test Split (to show shape)
         train, test = train_test_split(df, test_size=0.2, random_state=42)
         train_shape, test_shape = train.shape, test.shape
 
@@ -362,5 +376,56 @@ def preprocess(request):
         'encoded_columns': encoded_columns,
         'num_outliers_deleted': num_outliers_deleted,
     }
-    
     return render(request, 'core/preprocess.html', context)
+
+#----------------------------- Model Training ----------------------------------
+
+def classify(request):
+    result = None
+    model_name = None
+
+    # Load preprocessed data file from session
+    preprocessed_file_path = request.session.get('preprocessed_file')
+    if not preprocessed_file_path or not os.path.exists(preprocessed_file_path):
+        return render(request, 'core/preprocess.html', {'error': 'No preprocessed data file available. Please preprocess the data first.'})
+
+    # Load the saved preprocessed dataset
+    df = pd.read_csv(preprocessed_file_path)
+
+    # Assume the last column is the target
+    X = df.iloc[:, :-1]  # Features
+    y = df.iloc[:, -1]   # Target
+
+    # Train/Test Split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Check for form submission
+    if request.method == 'POST':
+        model_name = request.POST.get('model')
+        if model_name == 'Naive Bayes':
+            model = GaussianNB()
+        elif model_name == 'SVM':
+            model = SVC()
+        elif model_name == 'Random Forest':
+            model = RandomForestClassifier()
+        elif model_name == 'KNN':
+            model = KNeighborsClassifier()
+        elif model_name == 'K-Means':
+            model = KMeans(n_clusters=len(y.unique()))
+        elif model_name == 'ANN':
+            model = MLPClassifier(max_iter=500)
+        else:
+            model = None
+
+        if model:
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            result = classification_report(y_test, y_pred, output_dict=True)
+
+    # Render results
+    context = {
+        'result': result,
+        'model_name': model_name,
+        'models': ['Naive Bayes', 'SVM', 'Random Forest', 'KNN', 'K-Means', 'ANN']
+    }
+    return render(request, 'core/classify.html', context)

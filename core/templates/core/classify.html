@@ -1,0 +1,126 @@
+{% extends 'core/base.html' %}
+{% block title %}Model Training{% endblock %}
+
+{% block content %}
+{% load custom_filters %}
+
+<div class="container-fluid">
+    <!-- Centered Form Section -->
+    <div class="row justify-content-center align-items-center vh-100">
+        <div class="col-md-6 text-center">
+            <h1 class="mb-4">Train Your Model</h1>
+            <form method="post" class="mb-4 p-4 border rounded shadow bg-light">
+                {% csrf_token %}
+                <div class="form-group mb-3">
+                    <label for="model" class="form-label"><strong>Select a Model:</strong></label>
+                    <select id="model" name="model" class="form-select">
+                        {% for model in models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Train Model</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Section (Visible Below) -->
+    {% if result %}
+        <div class="card mt-5" id="results">
+            <div class="card-header bg-primary text-white">
+                <h4>Model: {{ model_name }}</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-4 text-center">Performance Metrics</h5>
+
+                <!-- Performance Metrics in Vertical Layout -->
+                <div class="d-flex flex-column align-items-center">
+                    <!-- Accuracy -->
+                    <div class="mb-4 text-center">
+                        <div class="circular-progress" 
+                             style="--percentage: {{ result|get_item:'accuracy'|multiply:100|floatformat:0 }};
+                                    --color: 
+                                        {% if result|get_item:'accuracy'|multiply:100 <= 40 %}red
+                                        {% elif result|get_item:'accuracy'|multiply:100 <= 69 %}orange
+                                        {% else %}green{% endif %};">
+                            <span class="percentage">{{ result|get_item:'accuracy'|multiply:100|floatformat:0 }}%</span>
+                        </div>
+                        <p class="mt-2"><strong>Accuracy</strong></p>
+                    </div>
+
+                    <!-- Macro Average Precision -->
+                    <div class="mb-4 text-center">
+                        <div class="circular-progress" 
+                             style="--percentage: {{ result|get_item:'macro avg'|get_item:'precision'|multiply:100|floatformat:0 }};
+                                    --color: 
+                                        {% if result|get_item:'macro avg'|get_item:'precision'|multiply:100 <= 40 %}red
+                                        {% elif result|get_item:'macro avg'|get_item:'precision'|multiply:100 <= 69 %}orange
+                                        {% else %}green{% endif %};">
+                            <span class="percentage">{{ result|get_item:'macro avg'|get_item:'precision'|multiply:100|floatformat:0 }}%</span>
+                        </div>
+                        <p class="mt-2"><strong>Macro Avg Precision</strong></p>
+                    </div>
+
+                    <!-- Weighted Average Precision -->
+                    <div class="mb-4 text-center">
+                        <div class="circular-progress" 
+                             style="--percentage: {{ result|get_item:'weighted avg'|get_item:'precision'|multiply:100|floatformat:0 }};
+                                    --color: 
+                                        {% if result|get_item:'weighted avg'|get_item:'precision'|multiply:100 <= 40 %}red
+                                        {% elif result|get_item:'weighted avg'|get_item:'precision'|multiply:100 <= 69 %}orange
+                                        {% else %}green{% endif %};">
+                            <span class="percentage">{{ result|get_item:'weighted avg'|get_item:'precision'|multiply:100|floatformat:0 }}%</span>
+                        </div>
+                        <p class="mt-2"><strong>Weighted Avg Precision</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Custom CSS for Circular Progress and Styling -->
+<style>
+    /* Center the form */
+    .vh-100 {
+        height: 100vh;
+    }
+
+    /* Circular Progress Styles with Dynamic Color */
+    .circular-progress {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(
+            var(--color) calc(var(--percentage) * 1%),
+            #e6e6e6 0
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        margin: 0 auto;
+    }
+
+    .circular-progress::before {
+        content: "";
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: #fff;
+        position: absolute;
+    }
+
+    .percentage {
+        position: relative;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    /* Add spacing between metrics */
+    .mb-4 {
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
