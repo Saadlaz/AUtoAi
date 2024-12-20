@@ -230,6 +230,7 @@ def visualize_data(request):
 
 
 
+
 def create_dynamic_dataset(request):
     if request.method == 'POST':
         form = DynamicDatasetForm(request.POST)
@@ -290,7 +291,15 @@ def predict(request):
     return render(request, 'core/predict.html')
 
 
+
+
+
+
 #---------------------- Preprocessing ---------------------------------
+
+
+
+
 
 
 def preprocess(request):
@@ -378,7 +387,17 @@ def preprocess(request):
     }
     return render(request, 'core/preprocess.html', context)
 
+
+
+
+
+
 #----------------------------- Model Training ----------------------------------
+
+
+
+
+
 
 def classify(request):
     result = None
