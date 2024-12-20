@@ -86,6 +86,8 @@
                     </div> 
                 </div> </div>
 
+                <!-- Target Choice -->
+
 <div class="section-container">
     <!-- Dataset Preview -->
     {% if dataset_info %}
@@ -133,5 +135,9 @@
             <p class="text-center">Rows: {{ dataset_info.shape.0 }}, Columns: {{ dataset_info.shape.1 }}</p>
         </div>
     {% endif %}
+</div>
+
+
+
 </div>
 {% endblock %}

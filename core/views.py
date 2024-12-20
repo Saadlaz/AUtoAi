@@ -399,58 +399,162 @@ def preprocess(request):
 
 
 
+from django.core.paginator import Paginator
+
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import (
+    accuracy_score, precision_score, f1_score,
+    silhouette_score, calinski_harabasz_score, adjusted_mutual_info_score,
+    mean_absolute_error, mean_squared_error, r2_score
+)
+
 def classify(request):
-    result = None
-    model_name = None
+    result_list = []
+    models_by_category = {
+        "Classification": ['Naive Bayes', 'SVM', 'Random Forest', 'K-Nearest Neighbours', 'Artificial Neural Network'],
+        "Clustering": ['K-Means', 'DBSCAN'],
+        "Regression": ['Simple', 'Polynomial', 'Multiple', 'Logistic']
+    }
+    metrics_by_category = {
+        "Classification": ["Accuracy", "Precision", "F1"],
+        "Clustering": ["Silhouette Score", "Calinski Harabasz", "Mutual Info"],
+        "Regression": ["MAE", "MSE", "R2"]
+    }
 
     # Load preprocessed data file from session
     preprocessed_file_path = request.session.get('preprocessed_file')
     if not preprocessed_file_path:
         return render(request, 'core/preprocess.html', {'error': 'No preprocessed data available.'})
 
+    # Load the dataset
     df = pd.read_csv(preprocessed_file_path)
+    column_names = df.columns.tolist()
 
-    # Assume the last column is the target
-    X = df.iloc[:, :-1]  # Features
-    y = df.iloc[:, -1]   # Target
+    # Get selected ML category
+    ml_category = request.POST.get('ml_category', 'Classification')
+    available_models = models_by_category.get(ml_category, [])
+    selected_models = request.POST.getlist('models')
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    try:
+        if ml_category == "Classification":
+            target_column = request.POST.get('target_column', column_names[-1])
+            X = df.drop(columns=[target_column])
+            y = df[target_column]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Handle form submission
-    if request.method == 'POST':
-        model_name = request.POST.get('model')
+            for model_name in selected_models:
+                if model_name == "Naive Bayes":
+                    model = GaussianNB()
+                elif model_name == "SVM":
+                    model = SVC()
+                elif model_name == "Random Forest":
+                    model = RandomForestClassifier()
+                elif model_name == "K-Nearest Neighbours":
+                    model = KNeighborsClassifier()
+                elif model_name == "Artificial Neural Network":
+                    model = MLPClassifier(max_iter=500)
+                else:
+                    continue
 
-        # Model selection
-        if model_name == 'Naive Bayes':
-            model = GaussianNB()
-        elif model_name == 'SVM':
-            model = SVC()
-        elif model_name == 'Random Forest':
-            model = RandomForestClassifier()  # Fixed
-        elif model_name == 'KNN':
-            model = KNeighborsClassifier()
-        elif model_name == 'K-Means':
-            model = KMeans(n_clusters=len(y.unique()))
-        elif model_name == 'ANN':
-            model = MLPClassifier(max_iter=500)
-        else:
-            return render(request, 'core/classify.html', {'error': 'Invalid model selection.'})
+                model.fit(X_train, y_train)
+                y_pred = model.predict(X_test)
 
-        # Train the model and generate predictions
-        model.fit(X_train, y_train)  # Ensure fitting happens here
-        y_pred = model.predict(X_test)
+                # Calculate classification metrics
+                metrics = {
+                    "Accuracy": accuracy_score(y_test, y_pred) * 100,
+                    "Precision": precision_score(y_test, y_pred, average='weighted') * 100,
+                    "F1": f1_score(y_test, y_pred, average='weighted') * 100
+                }
+                result_list.append({"model_name": model_name, "metrics": metrics})
 
-        # Generate classification report
-        try:
-            result = classification_report(y_test, y_pred, output_dict=True)
-        except Exception as e:
-            return render(request, 'core/classify.html', {'error': f"Error during evaluation: {str(e)}"})
+        elif ml_category == "Clustering":
+            X = df  # No target column for clustering
+            for model_name in selected_models:
+                if model_name == "K-Means":
+                    model = KMeans(n_clusters=3, random_state=42)  # Example: 3 clusters
+                elif model_name == "DBSCAN":
+                    model = DBSCAN()
+                else:
+                    continue
 
-    # Render the template
+                y_pred = model.fit_predict(X)
+
+                # Calculate clustering metrics
+                metrics = {
+                    "Silhouette Score": silhouette_score(X, y_pred) * 100,
+                    "Calinski Harabasz": calinski_harabasz_score(X, y_pred),
+                    "Mutual Info": adjusted_mutual_info_score(y_pred, y_pred) * 100
+                }
+                result_list.append({"model_name": model_name, "metrics": metrics})
+
+        elif ml_category == "Regression":
+            # Ensure the target column is selected
+            target_column = request.POST.get('target_column', column_names[-1])
+            X = df.drop(columns=[target_column])  # Features
+            y = df[target_column]  # Target
+
+            # Split data into training and test sets
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+            for model_name in selected_models:
+                if model_name == "Simple":
+                    model = LinearRegression()
+                elif model_name == "Polynomial":
+                    # Example: Extend LinearRegression for Polynomial features
+                    from sklearn.preprocessing import PolynomialFeatures
+                    poly = PolynomialFeatures(degree=2)
+                    X_poly = poly.fit_transform(X_train)
+                    X_test_poly = poly.transform(X_test)
+                    model = LinearRegression()
+                    model.fit(X_poly, y_train)
+                    y_pred = model.predict(X_test_poly)
+                elif model_name == "Multiple":
+                    model = LinearRegression()
+                elif model_name == "Logistic":
+                    model = LogisticRegression(max_iter=1000)
+                else:
+                    continue
+
+                # Train and predict
+                if model_name != "Polynomial":
+                    model.fit(X_train, y_train)
+                    y_pred = model.predict(X_test)
+
+                # Calculate regression metrics
+                metrics = {
+                    "mae": mean_absolute_error(y_test, y_pred),
+                    "mse": mean_squared_error(y_test, y_pred),
+                    "r2": r2_score(y_test, y_pred) * 100
+                }
+                result_list.append({"model_name": model_name, "metrics": metrics})
+
+
+    except Exception as e:
+        return render(request, 'core/classify.html', {
+            'error': f"Error occurred: {str(e)}",
+            'models': available_models,
+            'columns': column_names,
+            'ml_category': ml_category
+        })
+
     context = {
-        'result': result,
-        'model_name': model_name,
-        'models': ['Naive Bayes', 'SVM', 'Random Forest', 'KNN', 'K-Means', 'ANN']
+        "columns": column_names,
+        "available_models": available_models,
+        "ml_category": ml_category,
+        "results": result_list,
     }
     return render(request, 'core/classify.html', context)
+
+
+
+
+from django.shortcuts import redirect
+
+def select_target(request):
+    if request.method == 'POST':
+        target_column = request.POST.get('target_column')
+        if target_column:
+            request.session['target_column'] = target_column
+            return redirect('classify')  # Redirect to classify page
+    return redirect('upload')  # Redirect back to upload if no target is selected

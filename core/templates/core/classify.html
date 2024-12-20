@@ -4,89 +4,98 @@
 {% block content %}
 {% load custom_filters %}
 
-<div class="container-fluid">
-    <!-- Centered Form Section -->
-    <div class="row justify-content-center align-items-center vh-100">
-        <div class="col-md-6 text-center">
-            <h1 class="mb-4">Train Your Model</h1>
-            <form method="post" class="mb-4 p-4 border rounded shadow bg-light">
-                {% csrf_token %}
-                <div class="form-group mb-3">
-                    <label for="model" class="form-label"><strong>Select a Model:</strong></label>
-                    <select id="model" name="model" class="form-select">
-                        {% for model in models %}
-                            <option value="{{ model }}">{{ model }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Train Model</button>
-            </form>
-        </div>
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="card shadow-lg p-5" style="max-width: 600px; width: 100%; border-radius: 20px;">
+        <h2 class="text-center fw-bold mb-4">Train Your Models</h2>
+        <form method="post" id="ml-form">
+            {% csrf_token %}
+
+            <!-- ML Category Selection -->
+            <div class="form-group mb-4">
+                <label for="ml_category" class="form-label"><strong>Select Machine Learning Category:</strong></label>
+                <select id="ml_category" name="ml_category" class="form-select" required>
+                    <option value="Classification" {% if ml_category == "Classification" %}selected{% endif %}>Classification</option>
+                    <option value="Clustering" {% if ml_category == "Clustering" %}selected{% endif %}>Clustering</option>
+                    <option value="Regression" {% if ml_category == "Regression" %}selected{% endif %}>Regression</option>
+                </select>
+            </div>
+
+            <!-- Target Column Selection (for Classification and Regression) -->
+            <div id="target-section" class="form-group mb-4" style="display: {% if ml_category == 'Classification' or ml_category == 'Regression' %}block{% else %}none{% endif %};">
+                <label for="target_column" class="form-label"><strong>Select Target Column:</strong></label>
+                <select id="target_column" name="target_column" class="form-select">
+                    {% for column in columns %}
+                        <option value="{{ column }}" {% if column == last_selected_target %}selected{% endif %}>{{ column }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+
+            <!-- Model Selection -->
+            <div class="form-group mb-4">
+                <label for="models" class="form-label"><strong>Select Models:</strong></label>
+                <select id="models" name="models" class="form-select" multiple required>
+                    {% for model in available_models %}
+                        <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Train Models</button>
+        </form>
     </div>
-
-    <!-- Results Section (Visible Below) -->
-    {% if result %}
-        <div class="card mt-5" id="results">
-            <div class="card-header bg-primary text-white">
-                <h4>Model: {{ model_name }}</h4>
-            </div>
-            <div class="card-body">
-                <h5 class="mb-4 text-center">Performance Metrics</h5>
-
-                <!-- Performance Metrics in Vertical Layout -->
-                <div class="d-flex flex-column align-items-center">
-                    <!-- Accuracy -->
-                    <div class="mb-4 text-center">
-                        <div class="circular-progress" 
-                             style="--percentage: {{ result|get_item:'accuracy'|multiply:100|floatformat:0 }};
-                                    --color: 
-                                        {% if result|get_item:'accuracy'|multiply:100 <= 40 %}red
-                                        {% elif result|get_item:'accuracy'|multiply:100 <= 69 %}orange
-                                        {% else %}green{% endif %};">
-                            <span class="percentage">{{ result|get_item:'accuracy'|multiply:100|floatformat:0 }}%</span>
-                        </div>
-                        <p class="mt-2"><strong>Accuracy</strong></p>
-                    </div>
-
-                    <!-- Macro Average Precision -->
-                    <div class="mb-4 text-center">
-                        <div class="circular-progress" 
-                             style="--percentage: {{ result|get_item:'macro avg'|get_item:'precision'|multiply:100|floatformat:0 }};
-                                    --color: 
-                                        {% if result|get_item:'macro avg'|get_item:'precision'|multiply:100 <= 40 %}red
-                                        {% elif result|get_item:'macro avg'|get_item:'precision'|multiply:100 <= 69 %}orange
-                                        {% else %}green{% endif %};">
-                            <span class="percentage">{{ result|get_item:'macro avg'|get_item:'precision'|multiply:100|floatformat:0 }}%</span>
-                        </div>
-                        <p class="mt-2"><strong>Macro Avg Precision</strong></p>
-                    </div>
-
-                    <!-- Weighted Average Precision -->
-                    <div class="mb-4 text-center">
-                        <div class="circular-progress" 
-                             style="--percentage: {{ result|get_item:'weighted avg'|get_item:'precision'|multiply:100|floatformat:0 }};
-                                    --color: 
-                                        {% if result|get_item:'weighted avg'|get_item:'precision'|multiply:100 <= 40 %}red
-                                        {% elif result|get_item:'weighted avg'|get_item:'precision'|multiply:100 <= 69 %}orange
-                                        {% else %}green{% endif %};">
-                            <span class="percentage">{{ result|get_item:'weighted avg'|get_item:'precision'|multiply:100|floatformat:0 }}%</span>
-                        </div>
-                        <p class="mt-2"><strong>Weighted Avg Precision</strong></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {% endif %}
 </div>
 
-<!-- Custom CSS for Circular Progress and Styling -->
-<style>
-    /* Center the form */
-    .vh-100 {
-        height: 100vh;
-    }
+<!-- Results Section -->
+{% if results %}
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Model Results</h2>
+        <div class="row">
+            {% for result in results %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0 text-center">{{ result.model_name }}</h5>
+                        </div>
+                        <div class="card-body text-center">
+                            {% for metric, value in result.metrics.items %}
+                                <div class="circular-progress mb-4"
+                                     style="--percentage: {{ value }};
+                                            --color: 
+                                                {% if value <= 40 %}red
+                                                {% elif value <= 69 %}orange
+                                                {% else %}green{% endif %};">
+                                    <span class="percentage">{{ value|floatformat:0 }}%</span>
+                                </div>
+                                <p><strong>{{ metric }}</strong></p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
 
-    /* Circular Progress Styles with Dynamic Color */
+<script>
+    // Dynamic Form Behavior
+    const mlCategory = document.getElementById('ml_category');
+    const targetSection = document.getElementById('target-section');
+    const form = document.getElementById('ml-form');
+
+    // Show or hide the target section based on the selected ML category
+    mlCategory.addEventListener('change', function () {
+        if (this.value === 'Classification' || this.value === 'Regression') {
+            targetSection.style.display = 'block';
+        } else {
+            targetSection.style.display = 'none';
+        }
+        form.submit(); // Reload the page with the selected ML category
+    });
+</script>
+
+<!-- Styles for Circular Progress Bars -->
+<style>
     .circular-progress {
         width: 120px;
         height: 120px;
@@ -118,9 +127,9 @@
         color: #333;
     }
 
-    /* Add spacing between metrics */
     .mb-4 {
         margin-bottom: 1.5rem;
     }
 </style>
+
 {% endblock %}
