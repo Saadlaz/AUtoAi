@@ -60,12 +60,18 @@
                         <div class="card-body text-center">
                             {% for metric, value in result.metrics.items %}
                                 <div class="circular-progress mb-4"
-                                     style="--percentage: {{ value }};
+                                    style="--percentage: {{ value }};
                                             --color: 
-                                                {% if value <= 40 %}red
-                                                {% elif value <= 69 %}orange
+                                                {% if metric == 'Silhouette Score' and value <= 40 %}red
+                                                {% elif metric == 'Silhouette Score' and value <= 69 %}orange
                                                 {% else %}green{% endif %};">
-                                    <span class="percentage">{{ value|floatformat:0 }}%</span>
+                                    <span class="percentage">
+                                        {% if metric == 'Silhouette Score' %}
+                                            {{ value|floatformat:0 }}%
+                                        {% else %}
+                                            {{ value|floatformat:2 }}
+                                        {% endif %}
+                                    </span>
                                 </div>
                                 <p><strong>{{ metric }}</strong></p>
                             {% endfor %}
@@ -76,6 +82,85 @@
         </div>
     </div>
 {% endif %}
+
+{% if kmeans_plot_html or dbscan_plot_html %}
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Cluster Visualizations</h2>
+        <div class="row">
+            {% if kmeans_plot_html %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h5 class="mb-0">K-Means Clustering</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ kmeans_plot_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            {% if dbscan_plot_html %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h5 class="mb-0">DBSCAN Clustering</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ dbscan_plot_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+
+
+<!-- Classification Visualization -->
+{% if classification_plots_html %}
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Classification Results</h2>
+        <div class="row">
+            {% for classification_plot_html in classification_plots_html %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h5 class="mb-0">Confusion Matrix</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ classification_plot_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+
+<!-- Regression Visualization -->
+{% if regression_plots_html %}
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Regression Results</h2>
+        <div class="row">
+            {% for regression_plot_html in regression_plots_html %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-primary text-dark text-center">
+                            <h5 class="mb-0">Regression Visualization</h5>
+                        </div>
+                        <div class="card-body">
+                            {{ regression_plot_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+
 
 <script>
     // Dynamic Form Behavior
@@ -129,6 +214,16 @@
 
     .mb-4 {
         margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+    .card img {
+        max-height: 300px;
+        object-fit: contain;
+        margin: 10px 0;
     }
 </style>
 

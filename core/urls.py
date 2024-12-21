@@ -5,9 +5,7 @@ from . import views
 urlpatterns = [
     path('', views.home, name='home'),
     path('upload/', views.upload_dataset, name='upload_dataset'),
-    
-    path('select_target/', views.select_target, name='select_target'),
-    
+        
     path('visualize/', views.visualize_data, name='visualize_data'),
     
     path('preprocess/', views.preprocess, name='preprocess'),
